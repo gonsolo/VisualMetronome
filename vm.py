@@ -4,7 +4,6 @@ import sys
 import tkinter as tk
 
 # --- Konfiguration ---
-# Der Portname, der in 'mido.get_input_names()' gefunden wurde:
 midi_port_name = 'Midi Through:Midi Through Port-0 14:0' 
 beats_per_measure = 4
 start_value = 0 # Offset für das Timing
@@ -20,13 +19,9 @@ is_fullscreen = False
 # --- Tkinter GUI Setup ---
 root = tk.Tk()
 root.title("Visuelles Metronom")
-# Fenstergröße für den Start, bevor Fullscreen aktiviert wird
 root.geometry("600x400") 
-
-# Hintergrundfarbe auf Schwarz setzen
 root.configure(bg="black")
 
-# Label für die Beat-Anzeige (Schrift: Weiß auf Schwarz)
 beat_label = tk.Label(root, text="--", font=("Helvetica", 250, "bold"), 
                        bg="black", fg="white")
 beat_label.pack(expand=True, fill='both')
@@ -34,33 +29,29 @@ beat_label.pack(expand=True, fill='both')
 # --- Funktionen ---
 
 def update_gui_beat(beat_number_str, is_takt_anfang=False):
-    """Aktualisiert das Label im Tkinter-Fenster."""
     beat_label.config(text=beat_number_str)
     if is_takt_anfang:
-        # Hervorhebung für den ersten Schlag (z.B. helleres Weiß/Silber)
         beat_label.config(fg="white") 
     else:
-        beat_label.config(fg="gray") # Etwas gedämpfter für die Zählzeiten 2, 3, 4
+        beat_label.config(fg="gray")
 
 def clear_gui():
-    """Setzt das Fenster zurück, wenn die Wiedergabe stoppt."""
     beat_label.config(text="--", fg="gray")
 
 def toggle_fullscreen(event=None):
-    """Wechselt zwischen Fenster- und Vollbildmodus."""
     global is_fullscreen
     is_fullscreen = not is_fullscreen
-    # Tkinter-Befehl, der den Fenstermanager anweist, in den Vollbildmodus zu wechseln
     root.attributes("-fullscreen", is_fullscreen)
 
 def exit_app(event=None):
     """Beendet die Anwendung sauber."""
-    if inport and inport.is_open:
-        inport.close()
+    global inport
+    if inport:
+        # Kein is_open Check notwendig, close() kann sicher aufgerufen werden
+        inport.close() 
     root.destroy() # Schließt das Tkinter-Fenster und beendet mainloop
 
 def check_midi_messages():
-    """Polls MIDI messages in a non-blocking way and updates GUI."""
     global total_beats_count, ticks_received, current_beat_in_measure
 
     if is_connected and inport:
@@ -82,16 +73,11 @@ def check_midi_messages():
                         update_gui_beat(str(current_beat_in_measure), 
                                         is_takt_anfang=(current_beat_in_measure == 1))
 
-    # Plant den nächsten Aufruf dieser Funktion nach 10ms
     root.after(10, check_midi_messages)
 
 # --- Tastatur-Bindungen (Keybindings) ---
-
-# Taste 'f' für Fullscreen
 root.bind("f", toggle_fullscreen)
-root.bind("F", toggle_fullscreen) # Auch Großbuchstaben abfangen
-
-# Taste 'x' und 'Escape' für Beenden
+root.bind("F", toggle_fullscreen)
 root.bind("x", exit_app)
 root.bind("X", exit_app)
 root.bind("<Escape>", exit_app)
@@ -106,21 +92,19 @@ try:
 
     ticks_pro_beat = 24
 
-    # Startet den Polling-Mechanismus für MIDI-Nachrichten
     root.after(10, check_midi_messages)
-    
-    # Startet die Tkinter-Hauptschleife (blockiert hier bis das Fenster geschlossen wird)
     root.mainloop()
 
 except IOError as e:
     print(f"Fehler beim Öffnen des Ports '{midi_port_name}': {e}")
     sys.exit(1)
 except KeyboardInterrupt:
-    pass # Wird jetzt durch exit_app() oder root.bind('<Escape>') gehandhabt
+    pass # exit_app wird das Aufräumen übernehmen, wenn mainloop beendet wird
 finally:
     # Aufräumen, wenn mainloop beendet ist
-    if inport and inport.is_open:
-        inport.close()
+    if inport:
+        inport.close() # is_open Check entfernt
     print("Skript beendet.")
+
 
 
