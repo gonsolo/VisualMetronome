@@ -2,51 +2,57 @@ import mido
 import time
 import sys
 
-# Der Name des Ports, den wir gerade identifiziert haben
 midi_port_name = 'Midi Through:Midi Through Port-0 14:0'
+beats_per_measure = 4 
 
 try:
-    # Port zum Lesen öffnen
-    inport = mido.open_input(midi_port_name)
-    print(f"Lausche auf MIDI-Port: {midi_port_name}")
-    print("Starten Sie jetzt die Wiedergabe in Ardour...")
+    with mido.open_input(midi_port_name) as inport:
+        print(f"Lausche auf MIDI-Port: {midi_port_name}")
+        print("Warten auf Start-Signal von Ardour...")
 
-    ticks_pro_beat = 24  # MIDI Clock sendet 24 Ticks pro Viertelnote
-    ticks_received = 0
-    beat_count = 0
-    
-    # Zustand für die visuelle Darstellung (ersetzen Sie dies später durch Pygame/Tkinter)
-    is_on_beat = False
+        ticks_pro_beat = 24
+        ticks_received = 0
+        # Starten Sie den Zähler mit einem Offset von -1 Beat
+        start_value = 0
+        total_beats_count = start_value
+        current_beat_in_measure = 0
 
-    while True:
-        # Auf MIDI-Nachrichten warten (blockiert, bis eine Nachricht kommt)
-        msg = inport.receive()
-        
-        if msg.type == 'clock':
-            ticks_received += 1
-            if ticks_received % ticks_pro_beat == 0:
-                beat_count += 1
-                is_on_beat = True
-                # Hier passiert der "Klick" im Takt
-                print(f"[{time.strftime('%H:%M:%S')}] KLICK! Beat: {beat_count}")
-                # HIER: Fügen Sie Ihren Code für die visuelle Darstellung ein
-                
-        elif msg.type == 'start':
-            beat_count = 0
-            ticks_received = 0
-            print("\n--- Ardour Wiedergabe gestartet ---\n")
-        
-        elif msg.type == 'stop':
-            print("\n--- Ardour Wiedergabe gestoppt ---\n")
+        while True:
+            msg = inport.receive()
+            
+            if msg.type == 'start':
+                # Bei Start zurücksetzen, der Offset wird beim ersten Takt greifen
+                total_beats_count = start_value
+                ticks_received = 0
+                print("\n--- Ardour Wiedergabe gestartet (warte auf 1. Beat) ---\n")
 
-except IOError:
-    print(f"Fehler: Konnte MIDI-Port '{midi_port_name}' nicht öffnen.")
-    sys.exit(1)
+            elif msg.type == 'clock':
+                ticks_received += 1
+                if ticks_received % ticks_pro_beat == 0:
+                    
+                    # Dies ist der Punkt, an dem ein neuer Beat beginnt
+                    total_beats_count += 1
+                    
+                    # Nur positive Beat-Zahlen anzeigen (wenn der Offset aufgebraucht ist)
+                    if total_beats_count >= 0:
+                        current_beat_in_measure = (total_beats_count % beats_per_measure) + 1
+                        
+                        if current_beat_in_measure == 1:
+                            print(f"[{time.strftime('%H:%M:%S')}] BEAT {current_beat_in_measure} (Taktanfang)")
+                        else:
+                            print(f"[{time.strftime('%H:%M:%S')}] Beat {current_beat_in_measure}")
+                        
+                        # HIER: Visuelle Darstellung auslösen
+            
+            elif msg.type == 'stop':
+                print("\n--- Ardour Wiedergabe gestoppt ---\n")
+                total_beats_count = start_value
+
+
 except KeyboardInterrupt:
     print("\nSkript beendet.")
-finally:
-    if 'inport' in locals() and inport.is_open:
-        inport.close()
-
+except IOError as e:
+    print(f"Fehler beim Öffnen des Ports: {e}")
+    sys.exit(1)
 
 
