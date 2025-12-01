@@ -2,7 +2,8 @@ import mido
 import time
 import sys
 
-midi_port_name = 'UM-ONE:UM-ONE MIDI 1 24:0'  # <-- Dieser Name ist korrekt!
+#midi_port_name = 'UM-ONE:UM-ONE MIDI 1 24:0'  # <-- Dieser Name ist korrekt!
+midi_port_name = 'UM-ONE:UM-ONE MIDI 1 20:0'
 
 # Die Namen aller verfügbaren Ports ausgeben
 def list_ports():
